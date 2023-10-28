@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using Betreibung.Dto;
+using Microsoft.Office.Core;
 using Microsoft.Office.Interop.Excel;
 
 public class ExcelProcessor {
@@ -14,7 +15,7 @@ public class ExcelProcessor {
     private readonly DateTime date;
     private int TotalLocation;
     private IDictionary<string, int> componentLocations;
-    private IDictionary<string, int> componentTotals;
+    private IDictionary<string, string> componentTotals;
 
     public ExcelProcessor(List<InvoiceResultDto> data, IDictionary<string, string> invoiceComponents, string legalName, string fileName, DateTime date) {
         this.data = data;
@@ -24,7 +25,7 @@ public class ExcelProcessor {
         this.date = date;
 
         componentLocations = new Dictionary<string, int>();
-        componentTotals = new Dictionary<string, int>();
+        componentTotals = new Dictionary<string, string>();
     }
 
     public void ProcessExcelFile() {
@@ -52,17 +53,24 @@ public class ExcelProcessor {
                 workSheet.Cells[rowCount, "D"] = rowData.PatientName;
                 workSheet.Cells[rowCount, "E"] = rowData.ContractNumber;
 
+                var total = string.Empty;
+
                 foreach (var components in rowData.InvoiceComponents) {
                     workSheet.Cells[rowCount, componentLocations[components.Key]] = components.Value;
+                    total += $"{workSheet.Cells[rowCount, componentLocations[components.Key]].Address}:";
                     if (!componentTotals.ContainsKey(components.Key))
-                        componentTotals.Add(components.Key, components.Value);
+                        componentTotals.Add(components.Key, $"{workSheet.Cells[rowCount, componentLocations[components.Key]].Address}:");
                     else
-                        componentTotals[components.Key] += components.Value;
+                        componentTotals[components.Key] += $"{workSheet.Cells[rowCount, componentLocations[components.Key]].Address}:";
                 }
 
-                workSheet.Cells[rowCount, TotalLocation] = rowData.Total;
+                workSheet.Cells[rowCount, TotalLocation].Formula = $"=SUM({total.Remove(total.Length - 1)})";
                 workSheet.Rows[rowCount].Font.Color = ColorTranslator.ToOle(Color.Red);
                 workSheet.Range[workSheet.Cells[rowCount, 1], workSheet.Cells[rowCount, TotalLocation]].Borders.Color = ColorTranslator.ToOle(Color.Black);
+
+                workSheet.Cells[rowCount, TotalLocation + 2] = rowData.Total;
+                workSheet.Cells[rowCount, TotalLocation + 3].Formula =
+                    $"={workSheet.Cells[rowCount, TotalLocation + 2].Address}-{workSheet.Cells[rowCount, TotalLocation].Address}";
                 rowCount++;
             }
 
@@ -88,10 +96,10 @@ public class ExcelProcessor {
     }
 
     private void DecorateExcelFile(Worksheet workSheet) {
-        var background = workSheet.Shapes.AddShape(Microsoft.Office.Core.MsoAutoShapeType.msoShapeRectangle, workSheet.Cells[1, 1].Left, workSheet.Cells[1, 1].Top, 600, 100);
+        var background = workSheet.Shapes.AddShape(MsoAutoShapeType.msoShapeRectangle, workSheet.Cells[1, 1].Left, workSheet.Cells[1, 1].Top, 600, 100);
         background.Fill.ForeColor.RGB = Color.White.ToArgb();
-        background.Line.Visible = Microsoft.Office.Core.MsoTriState.msoFalse;
-        workSheet.Shapes.AddPicture(AppDomain.CurrentDomain.BaseDirectory + @"\Static\Images\diag.png", Microsoft.Office.Core.MsoTriState.msoFalse, Microsoft.Office.Core.MsoTriState.msoCTrue, workSheet.Cells[1, 1].Left, workSheet.Cells[1, 1].Top, 800, 100);
+        background.Line.Visible = MsoTriState.msoFalse;
+        workSheet.Shapes.AddPicture(AppDomain.CurrentDomain.BaseDirectory + @"\Static\Images\diag.png", MsoTriState.msoFalse, MsoTriState.msoCTrue, workSheet.Cells[1, 1].Left, workSheet.Cells[1, 1].Top, 800, 100);
 
         workSheet.Cells[6, "E"] = $"Kính gửi: {legalName}";
         workSheet.Cells[7, "E"] = "Bảng Báo Cáo Thanh toán Chi Phí Y Tế";
@@ -112,6 +120,13 @@ public class ExcelProcessor {
         workSheet.Cells[12, currentCell] = "Grand total";
         TotalLocation = currentCell;
 
+        workSheet.Range[workSheet.Cells[12, 1], workSheet.Cells[12, currentCell]].Borders.Color = ColorTranslator.ToOle(Color.Black);
+        workSheet.Range[workSheet.Cells[12, 1], workSheet.Cells[12, currentCell]].Interior.Color = Color.FromArgb(217, 225, 242);
+
+        workSheet.Cells[12, currentCell + 2] = "ERP Gốc";
+
+        workSheet.Cells[12, currentCell + 3] = "DIFF";
+
         workSheet.Range[workSheet.Cells[6, "E"], workSheet.Cells[8, "E"]].Font.Bold = true;
         workSheet.Range[workSheet.Cells[6, "E"], workSheet.Cells[8, "E"]].Font.Name = "Times New Roman";
         workSheet.Range[workSheet.Cells[6, "E"], workSheet.Cells[8, "E"]].Font.Size = 16;
@@ -120,8 +135,6 @@ public class ExcelProcessor {
         workSheet.Rows[12].Font.Name = "Times New Roman";
         workSheet.Rows[12].Font.Size = 16;
 
-        workSheet.Range[workSheet.Cells[12, 1], workSheet.Cells[12, currentCell]].Borders.Color = ColorTranslator.ToOle(Color.Black);
-        workSheet.Range[workSheet.Cells[12, 1], workSheet.Cells[12, currentCell]].Interior.Color = Color.FromArgb(217, 225, 242);
 
         workSheet.Range[workSheet.Cells[6, "E"], workSheet.Cells[6, "J"]].Merge(true);
         workSheet.Range[workSheet.Cells[7, "E"], workSheet.Cells[7, "H"]].Merge(true);
@@ -129,18 +142,25 @@ public class ExcelProcessor {
 
     private void FinalizeInvoice(Worksheet workSheet, int rowCount) {
         workSheet.Cells[rowCount, "A"] = "TOTAL";
-        var grandTotal = 0;
+        var result = string.Empty;
         foreach (var total in componentTotals) {
-            workSheet.Cells[rowCount, componentLocations[total.Key]] = total.Value;
-            grandTotal += total.Value;
+            workSheet.Cells[rowCount, componentLocations[total.Key]].Formula = $"=SUM({total.Value.Remove(total.Value.Length - 1)})";
             workSheet.Cells[rowCount, componentLocations[total.Key]].Borders.Color = ColorTranslator.ToOle(Color.Black);
             workSheet.Cells[rowCount, componentLocations[total.Key]].Interior.Color = Color.FromArgb(217, 225, 242);
-
+            result += $"{workSheet.Cells[rowCount, componentLocations[total.Key]].Address}:";
         }
 
-        workSheet.Cells[rowCount, TotalLocation] = grandTotal;
+        workSheet.Cells[rowCount, TotalLocation].Formula = $"=Sum({result.Remove(result.Length - 1)})";
         workSheet.Cells[rowCount, TotalLocation].Borders.Color = ColorTranslator.ToOle(Color.Black);
         workSheet.Cells[rowCount, TotalLocation].Interior.Color = Color.FromArgb(217, 225, 242);
+
+        workSheet.Cells[rowCount, TotalLocation + 2] = workSheet.Cells[rowCount, TotalLocation].Value;
+        workSheet.Cells[rowCount, TotalLocation + 3].Formula = $"={workSheet.Cells[rowCount, TotalLocation + 2].Address}-{workSheet.Cells[rowCount, TotalLocation].Address}";
+
+        workSheet.Cells[9, TotalLocation].Formula = $"={workSheet.Cells[rowCount, TotalLocation].Address}";
+        workSheet.Cells[9, TotalLocation].Font.Bold = true;
+        workSheet.Cells[9, TotalLocation].Font.Color = ColorTranslator.ToOle(Color.Red);
+        workSheet.Cells[9, TotalLocation].Font.Underline = Microsoft.Office.Interop.Excel.XlUnderlineStyle.xlUnderlineStyleSingle;
 
         workSheet.Rows[rowCount].Font.Bold = true;
         workSheet.Range[workSheet.Cells[rowCount, 1], workSheet.Cells[rowCount, 5]].Borders.Color = ColorTranslator.ToOle(Color.Black);
@@ -193,5 +213,6 @@ public class ExcelProcessor {
 
     private void Release(object comObject) {
         Marshal.ReleaseComObject(comObject);
+        comObject = null;
     }
 }
