@@ -1,7 +1,7 @@
 ﻿namespace Betreibung.Dto; 
 
 public class InvoiceResultDto {
-    public InvoiceResultDto(string date, string accessNumber, string patientName, string contractNumber, Dictionary<string, int> invoiceComponents, int total) {
+    public InvoiceResultDto(DateTime date, string accessNumber, string patientName, string contractNumber, Dictionary<string, decimal> invoiceComponents, decimal total) {
         Date = date;
         AccessNumber = accessNumber;
         PatientName = patientName;
@@ -10,7 +10,7 @@ public class InvoiceResultDto {
         Total = total;
     }
 
-    public string Date { get; set; }
+    public DateTime Date { get; set; }
 
     public string AccessNumber { get; set; }
 
@@ -18,7 +18,7 @@ public class InvoiceResultDto {
 
     public string ContractNumber { get; set; }
 
-    public IDictionary<string, int> InvoiceComponents { get; set; }
+    public IDictionary<string, decimal> InvoiceComponents { get; set; }
 
-    public int Total { get; set; }
+    public decimal Total { get; set; }
 }

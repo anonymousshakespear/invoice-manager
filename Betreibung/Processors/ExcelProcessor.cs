@@ -48,24 +48,21 @@ public class ExcelProcessor {
             var rowCount = 13;
             foreach (var rowData in data) {
                 workSheet.Cells[rowCount, "A"] = data.IndexOf(rowData) + 1;
-                workSheet.Cells[rowCount, "B"] = rowData.Date;
+                workSheet.Cells[rowCount, "B"] = $"'{rowData.Date.ToShortDateString()}";
                 workSheet.Cells[rowCount, "C"] = rowData.AccessNumber;
                 workSheet.Cells[rowCount, "D"] = rowData.PatientName;
                 workSheet.Cells[rowCount, "E"] = rowData.ContractNumber;
 
-                var total = string.Empty;
-
                 foreach (var components in rowData.InvoiceComponents) {
                     workSheet.Cells[rowCount, componentLocations[components.Key]] = components.Value;
-                    total += $"{workSheet.Cells[rowCount, componentLocations[components.Key]].Address}:";
                     if (!componentTotals.ContainsKey(components.Key))
                         componentTotals.Add(components.Key, $"{workSheet.Cells[rowCount, componentLocations[components.Key]].Address}:");
                     else
                         componentTotals[components.Key] += $"{workSheet.Cells[rowCount, componentLocations[components.Key]].Address}:";
                 }
 
-                workSheet.Cells[rowCount, TotalLocation].Formula = $"=SUM({total.Remove(total.Length - 1)})";
-                workSheet.Rows[rowCount].Font.Color = ColorTranslator.ToOle(Color.Red);
+                workSheet.Cells[rowCount, TotalLocation].Formula = 
+                    $"=SUM({workSheet.Cells[rowCount, "F"].Address}:{workSheet.Cells[rowCount, TotalLocation - 1].Address})";
                 workSheet.Range[workSheet.Cells[rowCount, 1], workSheet.Cells[rowCount, TotalLocation]].Borders.Color = ColorTranslator.ToOle(Color.Black);
 
                 workSheet.Cells[rowCount, TotalLocation + 2] = rowData.Total;
@@ -81,6 +78,7 @@ public class ExcelProcessor {
 
             workSheet.Range[workSheet.Rows[1], workSheet.Rows[TotalLocation + 2]].Columns.AutoFit();
 
+            Console.WriteLine($"Saving {fileName}");
             workBook.SaveAs($"{ConfigurationManager.AppSettings.Get("outputDirectory")}\\{fileName}.xlsx", XlFileFormat.xlOpenXMLWorkbook);
         }
         finally {
@@ -170,19 +168,20 @@ public class ExcelProcessor {
     }
 
     private void CoverLetter(Worksheet workSheet, int rowCount) {
-        workSheet.Cells[rowCount, 10] = $"Tp.Hồ Chí Minh, ngày {DateTime.DaysInMonth(date.Year, date.Month)} tháng {date.Month} năm {date.Year}";
-        workSheet.Cells[rowCount, 10].Font.Size = 20;
-        workSheet.Cells[rowCount, 10].HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
-        workSheet.Range[workSheet.Cells[rowCount, 10], workSheet.Cells[rowCount, 15]].Merge();
+        var formattedLocation = TotalLocation > 8 ? TotalLocation - 4 : 10;
+        workSheet.Cells[rowCount, formattedLocation] = $"Tp.Hồ Chí Minh, ngày {DateTime.DaysInMonth(date.Year, date.Month)} tháng {date.Month} năm {date.Year}";
+        workSheet.Cells[rowCount, formattedLocation].Font.Size = 20;
+        workSheet.Cells[rowCount, formattedLocation].HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
+        workSheet.Range[workSheet.Cells[rowCount, formattedLocation], workSheet.Cells[rowCount, formattedLocation + 3]].Merge();
 
-        workSheet.Cells[rowCount, 17] = $"{date.Month}/{DateTime.DaysInMonth(date.Year, date.Month)}/{date.Year}";
-        workSheet.Cells[rowCount, 17].Font.Size = 18;
-        workSheet.Cells[rowCount, 17].Font.Bold = true;
-        workSheet.Cells[rowCount, 17].Interior.Color = Color.FromArgb(255, 255, 0);
+        workSheet.Cells[rowCount, formattedLocation + 6] = $"{date.Month}/{DateTime.DaysInMonth(date.Year, date.Month)}/{date.Year}";
+        workSheet.Cells[rowCount, formattedLocation + 6].Font.Size = 18;
+        workSheet.Cells[rowCount, formattedLocation + 6].Font.Bold = true;
+        workSheet.Cells[rowCount, formattedLocation + 6].Interior.Color = Color.FromArgb(255, 255, 0);
 
-        workSheet.Cells[rowCount, 18] = "Ngày hóa đơn";
-        workSheet.Cells[rowCount, 18].Font.Size = 18;
-        workSheet.Cells[rowCount, 18].Font.Bold = true;
+        workSheet.Cells[rowCount, formattedLocation + 7] = "Ngày hóa đơn";
+        workSheet.Cells[rowCount, formattedLocation + 7].Font.Size = 18;
+        workSheet.Cells[rowCount, formattedLocation + 7].Font.Bold = true;
 
         rowCount++;
 
@@ -191,10 +190,10 @@ public class ExcelProcessor {
         workSheet.Cells[rowCount, 1].Font.Size = 20;
         workSheet.Range[workSheet.Cells[rowCount, 1], workSheet.Cells[rowCount, 3]].Merge();
 
-        workSheet.Cells[rowCount, 10] = "Kế toán trưởng";
-        workSheet.Cells[rowCount, 10].Font.Size = 20;
-        workSheet.Cells[rowCount, 10].HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
-        workSheet.Range[workSheet.Cells[rowCount, 10], workSheet.Cells[rowCount, 15]].Merge();
+        workSheet.Cells[rowCount, formattedLocation] = "Kế toán trưởng";
+        workSheet.Cells[rowCount, formattedLocation].Font.Size = 20;
+        workSheet.Cells[rowCount, formattedLocation].HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
+        workSheet.Range[workSheet.Cells[rowCount, formattedLocation], workSheet.Cells[rowCount, formattedLocation + 3]].Merge();
 
         rowCount += 7;
 
@@ -204,11 +203,11 @@ public class ExcelProcessor {
         workSheet.Cells[rowCount, 1].Font.Bold = true;
         workSheet.Range[workSheet.Cells[rowCount, 1], workSheet.Cells[rowCount, 3]].Merge();
 
-        workSheet.Cells[rowCount, 10] = "Phan Hoàng Nguyên";
-        workSheet.Cells[rowCount, 10].Font.Size = 20;
-        workSheet.Cells[rowCount, 10].Font.Bold = true;
-        workSheet.Cells[rowCount, 10].HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
-        workSheet.Range[workSheet.Cells[rowCount, 10], workSheet.Cells[rowCount, 15]].Merge();
+        workSheet.Cells[rowCount, formattedLocation] = "Phan Hoàng Nguyên";
+        workSheet.Cells[rowCount, formattedLocation].Font.Size = 20;
+        workSheet.Cells[rowCount, formattedLocation].Font.Bold = true;
+        workSheet.Cells[rowCount, formattedLocation].HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
+        workSheet.Range[workSheet.Cells[rowCount, formattedLocation], workSheet.Cells[rowCount, formattedLocation + 3]].Merge();
     }
 
     private void Release(object comObject) {

@@ -2,13 +2,14 @@
 
 using Betreibung.Enums;
 using Betreibung.Helpers;
+using System.Globalization;
 
 public class InvoiceInformationDto {
     public InvoiceInformationDto(string data) {
         var splits = data.Split(";");
 
         IsClosed = splits[0] == "Yes";
-        Date = DateTime.Parse(splits[1]);
+        Date = DateTime.ParseExact(splits[1], "dd/MM/yyyy", CultureInfo.InvariantCulture);
         AccessNumber = splits[2];
         PatientName = splits[3];
         ContractNumber = splits[4];
@@ -16,7 +17,7 @@ public class InvoiceInformationDto {
         Name = splits[6];
         Item = splits[7];
         DisplayName = splits[8];
-        Amount = int.Parse(splits[9]);
+        Amount = decimal.Parse(splits[9]);
         Area = EnumHelper.ParseEnum<InvoiceAreaEnum>(splits[10]);
         LegalName = splits[11];
         ShortName = splits[12];
@@ -43,7 +44,7 @@ public class InvoiceInformationDto {
 
     public string DisplayName { get; set; }
     
-    public int Amount { get; set; }
+    public decimal Amount { get; set; }
 
     public InvoiceAreaEnum Area { get; set; }
 
