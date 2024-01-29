@@ -1,8 +1,8 @@
-﻿namespace Betreibung;
+﻿namespace B2BInvoice;
 
 using System.Configuration;
 using Common.Handlers;
-using Betreibung.Processors;
+using B2BInvoice.Processors;
 
 public class Program {
     static void Main(string[] args) {

@@ -1,4 +1,4 @@
-﻿namespace Betreibung.Handlers; 
+﻿namespace Common.Handlers; 
 
 public class FileHandler {
     private readonly string fileName;

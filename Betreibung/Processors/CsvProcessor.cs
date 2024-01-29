@@ -3,8 +3,6 @@
 using Betreibung.Dto;
 
 public class CsvProcessor {
-    public CsvProcessor() { }
-
     public void ProcessCsvDataToDto(List<string>? data) {
         if (data == null)
             return;

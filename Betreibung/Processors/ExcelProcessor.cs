@@ -15,7 +15,6 @@ public class ExcelProcessor {
     private readonly DateTime date;
     private int TotalLocation;
     private IDictionary<string, int> componentLocations;
-    private IDictionary<string, string> componentTotals;
 
     public ExcelProcessor(List<InvoiceResultDto> data, IDictionary<string, string> invoiceComponents, string legalName, string fileName, DateTime date) {
         this.data = data;
@@ -25,7 +24,6 @@ public class ExcelProcessor {
         this.date = date;
 
         componentLocations = new Dictionary<string, int>();
-        componentTotals = new Dictionary<string, string>();
     }
 
     public void ProcessExcelFile() {
@@ -55,10 +53,6 @@ public class ExcelProcessor {
 
                 foreach (var components in rowData.InvoiceComponents) {
                     workSheet.Cells[rowCount, componentLocations[components.Key]] = components.Value;
-                    if (!componentTotals.ContainsKey(components.Key))
-                        componentTotals.Add(components.Key, $"{workSheet.Cells[rowCount, componentLocations[components.Key]].Address}:");
-                    else
-                        componentTotals[components.Key] += $"{workSheet.Cells[rowCount, componentLocations[components.Key]].Address}:";
                 }
 
                 workSheet.Cells[rowCount, TotalLocation].Formula = 
@@ -141,11 +135,12 @@ public class ExcelProcessor {
     private void FinalizeInvoice(Worksheet workSheet, int rowCount) {
         workSheet.Cells[rowCount, "A"] = "TOTAL";
         var result = string.Empty;
-        foreach (var total in componentTotals) {
-            workSheet.Cells[rowCount, componentLocations[total.Key]].Formula = $"=SUM({total.Value.Remove(total.Value.Length - 1)})";
-            workSheet.Cells[rowCount, componentLocations[total.Key]].Borders.Color = ColorTranslator.ToOle(Color.Black);
-            workSheet.Cells[rowCount, componentLocations[total.Key]].Interior.Color = Color.FromArgb(217, 225, 242);
-            result += $"{workSheet.Cells[rowCount, componentLocations[total.Key]].Address}:";
+        foreach (var component in componentLocations) {
+            workSheet.Cells[rowCount, component.Value].Formula = 
+                $"=SUM({workSheet.Cells[12 , component.Value].Address}:{workSheet.Cells[rowCount - 1, component.Value].Address})";
+            workSheet.Cells[rowCount, component.Value].Borders.Color = ColorTranslator.ToOle(Color.Black);
+            workSheet.Cells[rowCount, component.Value].Interior.Color = Color.FromArgb(217, 225, 242);
+            result += $"{workSheet.Cells[rowCount, component.Value].Address}:";
         }
 
         workSheet.Cells[rowCount, TotalLocation].Formula = $"=Sum({result.Remove(result.Length - 1)})";
@@ -203,7 +198,7 @@ public class ExcelProcessor {
         workSheet.Cells[rowCount, 1].Font.Bold = true;
         workSheet.Range[workSheet.Cells[rowCount, 1], workSheet.Cells[rowCount, 3]].Merge();
 
-        workSheet.Cells[rowCount, formattedLocation] = "Phan Hoàng Nguyên";
+        workSheet.Cells[rowCount, formattedLocation] = "Chu Thị Lan Anh";
         workSheet.Cells[rowCount, formattedLocation].Font.Size = 20;
         workSheet.Cells[rowCount, formattedLocation].Font.Bold = true;
         workSheet.Cells[rowCount, formattedLocation].HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
